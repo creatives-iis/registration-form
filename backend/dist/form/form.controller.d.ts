@@ -7,4 +7,6 @@ export declare class FormController {
     create(createFormDto: CreateFormDto): Promise<import("./form.schema").Form>;
     findAll(): Promise<import("./form.schema").Form[]>;
     exportExcel(res: Response): Promise<void>;
+    getPdf(id: string, res: Response): Promise<void>;
+    downloadSelectedAsZip(ids: string[], res: Response): Promise<void>;
 }

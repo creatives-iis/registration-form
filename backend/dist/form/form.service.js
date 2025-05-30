@@ -1,10 +1,43 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
@@ -17,7 +50,8 @@ const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 const form_schema_1 = require("./form.schema");
-const ExcelJS = require("exceljs");
+const ExcelJS = __importStar(require("exceljs"));
+const pdf_lib_1 = require("pdf-lib");
 let FormService = class FormService {
     formModel;
     constructor(formModel) {
@@ -87,6 +121,46 @@ let FormService = class FormService {
         res.setHeader('Content-Disposition', 'attachment; filename=form-submissions.xlsx');
         await workbook.xlsx.write(res);
         res.end();
+    }
+    async generatePdf(id, res) {
+        const form = await this.formModel.findById(id).lean();
+        if (!form) {
+            res.status(404).send('Form not found');
+            return;
+        }
+        const pdfDoc = await pdf_lib_1.PDFDocument.create();
+        const page = pdfDoc.addPage([600, 400]);
+        const font = await pdfDoc.embedFont(pdf_lib_1.StandardFonts.Helvetica);
+        const drawText = (text, y) => {
+            page.drawText(text, {
+                x: 50,
+                y,
+                size: 12,
+                font,
+                color: (0, pdf_lib_1.rgb)(0, 0, 0),
+            });
+        };
+        drawText(`First Name: ${form.firstName}`, 350);
+        drawText(`Last Name: ${form.lastName}`, 330);
+        drawText(`Email: ${form.email}`, 310);
+        drawText(`Date of Application: ${form.dateOfApplication || ''}`, 290);
+        const pdfBytes = await pdfDoc.save();
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=${form.firstName}_${form.lastName}.pdf`);
+        res.send(Buffer.from(pdfBytes));
+    }
+    async generatePdfBuffer(form) {
+        const pdfDoc = await pdf_lib_1.PDFDocument.create();
+        const page = pdfDoc.addPage();
+        const { width, height } = page.getSize();
+        const font = await pdfDoc.embedFont(pdf_lib_1.StandardFonts.Helvetica);
+        page.drawText(`Name: ${form.firstName} ${form.lastName}`, { x: 50, y: height - 50, size: 12, font });
+        page.drawText(`Email: ${form.email}`, { x: 50, y: height - 70, size: 12, font });
+        page.drawText(`Date of Application: ${form.dateOfApplication}`, { x: 50, y: height - 90, size: 12, font });
+        return Buffer.from(await pdfDoc.save());
+    }
+    async findOne(id) {
+        return this.formModel.findById(id).exec();
     }
 };
 exports.FormService = FormService;

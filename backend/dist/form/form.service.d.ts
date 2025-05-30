@@ -7,4 +7,7 @@ export declare class FormService {
     create(createFormDto: any): Promise<Form>;
     findAll(): Promise<Form[]>;
     exportToExcel(res: Response): Promise<void>;
+    generatePdf(id: string, res: Response): Promise<void>;
+    generatePdfBuffer(form: Form): Promise<Buffer>;
+    findOne(id: string): Promise<Form | null>;
 }
